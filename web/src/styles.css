@@ -1,0 +1,87 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  color: #111;
+  background: #f4f6f8;
+}
+
+.app {
+  width: min(430px, 100%);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.top { margin-bottom: 16px; }
+
+.balance {
+  margin: 0 0 12px;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.tabs, .presets, .stack {
+  display: flex;
+  gap: 8px;
+}
+
+.tabs button, .presets button, .stack button, .add {
+  font: inherit;
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.tabs { margin-bottom: 8px; }
+
+.tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  background: #fff;
+}
+
+.tabs button[aria-current="page"] {
+  border-bottom: 3px solid #111;
+  font-weight: 700;
+}
+
+.stack { flex-direction: column; }
+
+.stack button, .add, .stack input, .stack textarea {
+  width: 100%;
+  max-width: 100%;
+}
+
+.add {
+  font-size: 1.25rem;
+  background: #111;
+  color: #fff;
+}
+
+.blue { background: #2563eb; color: #fff; }
+.green { background: #16a34a; color: #fff; }
+.red { background: #dc2626; color: #fff; }
+.neutral, .presets button { background: #fff; color: #111; border-color: #d0d5dd; }
+.stub { background: #eceff3; color: #667085; }
+
+button:disabled { opacity: 0.45; }
+
+label { font-size: 0.9rem; }
+
+input, textarea {
+  font: inherit;
+  padding: 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+}
+
+.error { color: #b42318; margin: 0; }
+.toast { margin: 0; }
+.empty { margin: 8px 0 0; }
+.legend { margin: 12px 0 0; padding-left: 18px; }
+svg { width: 100%; height: auto; }
