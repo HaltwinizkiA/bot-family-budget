@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { Readable } from "node:stream";
 import { Bot } from "grammy";
-import { handle } from "hono/vercel";
+import type { Hono } from "hono";
 import { createRuntime } from "../src/runtime.js";
 
 export const config = {
@@ -8,11 +9,11 @@ export const config = {
   maxDuration: 30,
 };
 
-type VercelHandler = (req: IncomingMessage, res: ServerResponse) => unknown;
+type Listener = (req: IncomingMessage, res: ServerResponse) => void;
 
-let handlerPromise: Promise<VercelHandler> | undefined;
+let listenerPromise: Promise<Listener> | undefined;
 
-async function boot(): Promise<VercelHandler> {
+async function boot(): Promise<Listener> {
   const { app, botToken } = await createRuntime();
   const bot = new Bot(botToken);
   const me = await bot.api.getMe();
@@ -27,11 +28,59 @@ async function boot(): Promise<VercelHandler> {
   });
   const webhook = process.env.WEBHOOK_URL?.trim();
   if (webhook) await bot.api.setWebhook(webhook);
-  return handle(app) as VercelHandler;
+  return (req, res) => {
+    void writeResponse(app, req, res);
+  };
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  handlerPromise ??= boot();
-  const impl = await handlerPromise;
-  return impl(req, res);
+export default function handler(req: IncomingMessage, res: ServerResponse) {
+  listenerPromise ??= boot();
+  listenerPromise
+      .then((listener) => listener(req, res))
+      .catch((error: unknown) => {
+        console.error(error);
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify({ error: "Не удалось сохранить, попробуйте ещё раз" }));
+        }
+      });
+}
+
+async function writeResponse(app: Hono, req: IncomingMessage, res: ServerResponse) {
+  try {
+    const response = await app.fetch(toRequest(req));
+    res.statusCode = response.status;
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "transfer-encoding") return;
+      res.setHeader(key, value);
+    });
+    res.end(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    console.error(error);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ error: "Не удалось сохранить, попробуйте ещё раз" }));
+    }
+  }
+}
+
+function toRequest(req: IncomingMessage): Request {
+  const host = req.headers.host ?? "localhost";
+  const url = `https://${host}${req.url ?? "/"}`;
+  const method = req.method ?? "GET";
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) value.forEach((item) => headers.append(key, item));
+    else headers.set(key, value);
+  }
+  if (method === "GET" || method === "HEAD") return new Request(url, { method, headers });
+  return new Request(url, {
+    method,
+    headers,
+    body: Readable.toWeb(req) as ReadableStream,
+    duplex: "half",
+  });
 }
