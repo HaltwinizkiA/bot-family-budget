@@ -10,48 +10,68 @@ afterEach(() => {
 });
 
 describe("mini app", () => {
-  it("shows the balance and the two tabs", async () => {
+  it("shows the balance, the tabs, and expense and deposit", async () => {
     const { root } = await start();
     expect(root.textContent).toContain("300.00 €");
     expect(root.querySelector("[data-action='tab-home']")?.textContent).toContain("Home");
     expect(root.querySelector("[data-action='tab-reports']")?.textContent).toContain("Reports");
+    expect(actionText(root, "[data-action='expense'], [data-action='deposit']")).toEqual(["Расходы", "Депозит"]);
+    expect(root.querySelector("[data-action='add']")).toBeNull();
+    expect(root.querySelector("[data-action='type-back']")).toBeNull();
   });
 
-  it("walks back from the amount screen without posting", async () => {
+  it("returns home from deposit, categories, and the amount form without posting", async () => {
     const fetchMock = vi.fn(fakeFetch);
     const { root } = await start(fetchMock);
-    click(root, "add");
+    click(root, "deposit");
+    expect(actionText(root, "form button")).toEqual(["ДЕПС", "Отменить"]);
+    click(root, "deposit-cancel");
+    expect(actionText(root, "[data-action='expense'], [data-action='deposit']")).toEqual(["Расходы", "Депозит"]);
+
+    click(root, "expense");
+    click(root, "categories-back");
+    expect(actionText(root, "[data-action='expense'], [data-action='deposit']")).toEqual(["Расходы", "Депозит"]);
+
     click(root, "expense");
     click(root, "category-Groceries");
+    expect(root.querySelector("h1")?.textContent).toBe("Продукты");
+    expect(actionText(root, "form button")).toEqual(["Отправить", "Отменить"]);
     setInput(root, "expense-amount", "5");
     click(root, "expense-cancel");
-    click(root, "categories-back");
-    click(root, "type-back");
     expect(root.textContent).toContain("300.00 €");
-    expect(root.querySelector("[data-action='add']")).not.toBeNull();
+    expect(actionText(root, "[data-action='expense'], [data-action='deposit']")).toEqual(["Расходы", "Депозит"]);
+    expect(root.querySelector("[data-action='category-Groceries']")).toBeNull();
     expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/transactions"))).toBe(false);
   });
 
-  it("shows the eight category literals and not income", async () => {
+  it("shows Russian category labels and posts the English enum", async () => {
     const { root } = await start();
-    click(root, "add");
     click(root, "expense");
-    const labels = [...root.querySelectorAll("[data-action^='category-']")].map((node) => node.textContent);
-    expect(labels).toEqual([
-      "Rent",
-      "Groceries",
-      "Household",
-      "Gifts",
-      "Restaurants & Cafés",
-      "Transport",
-      "Entertainment",
-      "Miscellaneous",
+    const buttons = [...root.querySelectorAll("[data-action^='category-']")];
+    expect(buttons.map((node) => node.textContent)).toEqual([
+      "Аренда",
+      "Продукты",
+      "Быт",
+      "Подарки",
+      "Рестораны и кафе",
+      "Транспорт",
+      "Развлечения",
+      "Прочее",
+    ]);
+    expect(buttons.map((node) => node.getAttribute("data-action"))).toEqual([
+      "category-Rent",
+      "category-Groceries",
+      "category-Household",
+      "category-Gifts",
+      "category-Restaurants & Cafés",
+      "category-Transport",
+      "category-Entertainment",
+      "category-Miscellaneous",
     ]);
   });
 
   it("keeps ДЕПС disabled until the deposit amount is positive", async () => {
     const { root } = await start();
-    click(root, "add");
     click(root, "deposit");
     const button = root.querySelector("[data-action='deposit-submit']") as HTMLButtonElement;
     expect(button.disabled).toBe(true);
@@ -72,7 +92,6 @@ describe("mini app", () => {
       return fakeFetch(input, init);
     });
     const { root } = await start(fetchMock);
-    click(root, "add");
     click(root, "expense");
     click(root, "category-Rent");
     setInput(root, "expense-amount", "10");
@@ -93,7 +112,6 @@ describe("mini app", () => {
       return fakeFetch(input, init);
     });
     const { root } = await start(fetchMock);
-    click(root, "add");
     click(root, "expense");
     click(root, "category-Groceries");
     setInput(root, "expense-amount", "25,50");
@@ -110,7 +128,6 @@ describe("mini app", () => {
       return fakeFetch(input, init);
     });
     const { root } = await start(fetchMock);
-    click(root, "add");
     click(root, "expense");
     click(root, "category-Rent");
     setInput(root, "expense-amount", "10.01");
@@ -126,7 +143,6 @@ describe("mini app", () => {
     setInput(root, "report-from", "2026-09-01");
     setInput(root, "report-to", "2026-10-01");
     click(root, "tab-home");
-    click(root, "add");
     click(root, "expense");
     click(root, "tab-reports");
     expect((root.querySelector("#report-from") as HTMLInputElement).value).toBe("2026-09-01");
@@ -167,7 +183,7 @@ describe("mini app", () => {
     setInput(root, "report-to", "2026-10-01");
     await flush();
     expect(root.textContent).toContain("Неверный период");
-    expect(root.textContent).toContain("Rent");
+    expect(root.textContent).toContain("Аренда");
     expect(root.textContent).toContain("10.00 €");
   });
 
@@ -184,7 +200,8 @@ describe("mini app", () => {
     });
     const { root } = await start(fetchMock);
     click(root, "tab-reports");
-    expect(root.textContent).toContain("Groceries");
+    expect(root.textContent).toContain("Продукты");
+    expect(root.textContent).not.toContain("Groceries");
     expect(root.textContent).toContain("25.00 €");
     expect(root.querySelector("svg")).not.toBeNull();
   });
@@ -201,16 +218,54 @@ describe("mini app", () => {
       return fakeFetch(input, init);
     });
     const { root } = await start(fetchMock);
-    click(root, "add");
     click(root, "deposit");
     setInput(root, "deposit-amount", "10");
     click(root, "deposit-submit");
     await vi.advanceTimersByTimeAsync(3000);
     expect(root.textContent).toContain("Сохранение…");
+    const submit = root.querySelector("[data-action='deposit-submit']") as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(actionText(root, "form button")).toEqual(["Сохранение…", "Отменить"]);
     release(json({ balance: "310.00" }));
     await vi.runAllTimersAsync();
   });
+
+  it("keeps the caret in the amount and comment fields", async () => {
+    const { root } = await start();
+    click(root, "expense");
+    click(root, "category-Rent");
+    expect(root.querySelector("form.screen-enter")).not.toBeNull();
+    typeInto(root, "expense-amount", "12", 2);
+    const amount = root.querySelector("#expense-amount") as HTMLInputElement;
+    expect(document.activeElement).toBe(amount);
+    expect(amount.selectionStart).toBe(2);
+    expect(amount.value).toBe("12");
+    expect(root.querySelector(".screen-enter")).toBeNull();
+
+    typeInto(root, "expense-comment", "кофе", 4);
+    const comment = root.querySelector("#expense-comment") as HTMLTextAreaElement;
+    expect(document.activeElement).toBe(comment);
+    expect(comment.selectionStart).toBe(4);
+    expect(comment.value).toBe("кофе");
+    expect(root.querySelector(".screen-enter")).toBeNull();
+
+    click(root, "expense-cancel");
+    click(root, "deposit");
+    typeInto(root, "deposit-amount", "8", 1);
+    const deposit = root.querySelector("#deposit-amount") as HTMLInputElement;
+    expect(document.activeElement).toBe(deposit);
+    expect(deposit.selectionStart).toBe(1);
+    typeInto(root, "deposit-comment", "зарплата", 8);
+    const note = root.querySelector("#deposit-comment") as HTMLTextAreaElement;
+    expect(document.activeElement).toBe(note);
+    expect(note.selectionStart).toBe(8);
+    expect(note.value).toBe("зарплата");
+  });
 });
+
+function actionText(root: HTMLElement, selector: string): string[] {
+  return [...root.querySelectorAll(selector)].map((node) => node.textContent ?? "");
+}
 
 function click(root: HTMLElement, action: string): void {
   const node = root.querySelector(`[data-action='${action}']`);
@@ -222,6 +277,15 @@ function setInput(root: HTMLElement, id: string, value: string): void {
   const input = root.querySelector(`#${id}`) as HTMLInputElement | null;
   if (!input) throw new Error(`missing #${id}`);
   input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function typeInto(root: HTMLElement, id: string, value: string, caret: number): void {
+  const input = root.querySelector(`#${id}`) as HTMLInputElement | HTMLTextAreaElement | null;
+  if (!input) throw new Error(`missing #${id}`);
+  input.focus();
+  input.value = value;
+  input.setSelectionRange(caret, caret);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 

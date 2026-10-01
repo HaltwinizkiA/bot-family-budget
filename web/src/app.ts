@@ -3,9 +3,21 @@ import { parseAmount } from "@domain/money.ts";
 import { pieMarkup } from "./pie.ts";
 
 type Slice = { category: string; amount: string };
-type Step = "home" | "type" | "categories" | "amount" | "deposit";
+type Step = "home" | "categories" | "amount" | "deposit";
 type Tab = "home" | "reports";
 type Preset = "month" | "quarter" | "year";
+
+const CATEGORY_LABELS: Readonly<Record<string, string>> = {
+  Rent: "Аренда",
+  Groceries: "Продукты",
+  Household: "Быт",
+  Gifts: "Подарки",
+  "Restaurants & Cafés": "Рестораны и кафе",
+  Transport: "Транспорт",
+  Entertainment: "Развлечения",
+  Miscellaneous: "Прочее",
+  income: "Доход",
+};
 
 type State = {
   tab: Tab;
@@ -75,7 +87,17 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
     }
   });
 
+  root.addEventListener("focusin", (event) => {
+    const target = event.target;
+    if (restoringFocus) return;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+    if (typeof target.scrollIntoView !== "function") return;
+    target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+
   let reportToken = 0;
+  let presented = "";
+  let restoringFocus = false;
 
   render();
   void loadBalance();
@@ -94,12 +116,6 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       render();
       return;
     }
-    if (action === "add") {
-      state.step = "type";
-      state.formError = null;
-      render();
-      return;
-    }
     if (action === "expense") {
       state.step = "categories";
       state.formError = null;
@@ -112,20 +128,8 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       render();
       return;
     }
-    if (action === "type-back") {
+    if (action === "categories-back" || action === "deposit-cancel" || action === "expense-cancel") {
       state.step = "home";
-      state.formError = null;
-      render();
-      return;
-    }
-    if (action === "categories-back" || action === "deposit-cancel") {
-      state.step = "type";
-      state.formError = null;
-      render();
-      return;
-    }
-    if (action === "expense-cancel") {
-      state.step = "categories";
       state.formError = null;
       render();
       return;
@@ -269,20 +273,28 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
   }
 
   function render(): void {
+    const key = `${state.tab}:${state.step}`;
+    const enter = key !== presented;
+    presented = key;
     const active = document.activeElement;
-    const activeId = active instanceof HTMLElement ? active.id : "";
+    const activeId = active instanceof HTMLElement && root.contains(active) ? active.id : "";
     const caret = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement ? active.selectionStart : null;
-    root.innerHTML = view(state);
+    root.innerHTML = view(state, enter);
     if (!activeId) return;
     const next = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(`#${CSS.escape(activeId)}`);
     if (!next) return;
-    next.focus();
-    if (caret !== null) next.setSelectionRange(caret, caret);
+    restoringFocus = true;
+    try {
+      next.focus();
+      if (caret !== null) next.setSelectionRange(caret, caret);
+    } finally {
+      restoringFocus = false;
+    }
   }
 }
 
-function view(state: State): string {
-  return `<div class="app">${header(state)}${state.tab === "home" ? home(state) : reports(state)}</div>`;
+function view(state: State, enter: boolean): string {
+  return `<div class="app">${header(state)}${state.tab === "home" ? home(state, enter) : reports(state, enter)}</div>`;
 }
 
 function header(state: State): string {
@@ -296,54 +308,52 @@ function header(state: State): string {
   </header>`;
 }
 
-function home(state: State): string {
-  if (state.step === "home") {
-    return `<button type="button" class="add" data-action="add">Добавить</button>`;
-  }
-  if (state.step === "type") {
-    return `<section class="stack" role="dialog" aria-label="Тип">
-      <button type="button" class="blue" data-action="expense">Расходы</button>
-      <button type="button" class="green" data-action="deposit">Депозит</button>
-      <button type="button" class="neutral" data-action="type-back">Назад</button>
-    </section>`;
-  }
+function home(state: State, enter: boolean): string {
   if (state.step === "categories") {
     const buttons = EXPENSE_CATEGORIES.map(
       (category) =>
-        `<button type="button" class="neutral" data-action="category-${esc(category)}">${esc(category)}</button>`,
+        `<button type="button" class="neutral" data-action="category-${esc(category)}">${esc(categoryLabel(category))}</button>`,
     ).join("");
-    return `<section class="stack"><h1>Категория</h1>${buttons}<button type="button" class="neutral" data-action="categories-back">Назад</button></section>`;
+    return `<section class="${stackClass(enter, false)}"><h1>Категория</h1>${buttons}<button type="button" class="neutral" data-action="categories-back">Отменить</button></section>`;
   }
   if (state.step === "amount") {
-    return `<form class="stack" onsubmit="return false">
-      <h1>${esc(state.category ?? "")}</h1>
+    const invalid = state.formError ? `aria-invalid="true" aria-describedby="form-error"` : "";
+    return `<form class="${stackClass(enter, true)}" onsubmit="return false">
+      <h1>${esc(categoryLabel(state.category ?? ""))}</h1>
       <label for="expense-amount">Сумма</label>
-      <input id="expense-amount" inputmode="decimal" autocomplete="off" value="${esc(state.expenseAmount)}" />
+      <input id="expense-amount" inputmode="decimal" autocomplete="off" value="${esc(state.expenseAmount)}" ${invalid} />
       <label for="expense-comment">Комментарий</label>
       <textarea id="expense-comment" maxlength="200">${esc(state.expenseComment)}</textarea>
-      ${errorLine(state.formError)}
-      <button type="button" class="red" data-action="expense-cancel">Отменить</button>
-      <button type="button" class="green" data-action="expense-submit" ${state.saving ? "disabled" : ""}>${state.waiting ? "Сохранение…" : "Отправить"}</button>
+      ${errorLine(state.formError, "form-error")}
+      <button type="button" class="expense" data-action="expense-submit" ${state.saving ? "disabled" : ""}>${state.waiting ? "Сохранение…" : "Отправить"}</button>
+      <button type="button" class="neutral" data-action="expense-cancel">Отменить</button>
     </form>`;
   }
-  const depositDisabled = state.saving || !amountOk(normalizeAmount(state.depositAmount));
-  return `<form class="stack" onsubmit="return false">
-    <h1>Депозит</h1>
-    <label for="deposit-amount">Сумма</label>
-    <input id="deposit-amount" inputmode="decimal" autocomplete="off" value="${esc(state.depositAmount)}" />
-    <label for="deposit-comment">Комментарий</label>
-    <textarea id="deposit-comment" maxlength="200">${esc(state.depositComment)}</textarea>
-    ${errorLine(state.formError)}
-    <button type="button" class="red" data-action="deposit-cancel">Отменить</button>
-    <button type="button" class="green" data-action="deposit-submit" ${depositDisabled ? "disabled" : ""}>${state.waiting ? "Сохранение…" : "ДЕПС"}</button>
-  </form>`;
+  if (state.step === "deposit") {
+    const depositDisabled = state.saving || !amountOk(normalizeAmount(state.depositAmount));
+    const invalid = state.formError ? `aria-invalid="true" aria-describedby="form-error"` : "";
+    return `<form class="${stackClass(enter, true)}" onsubmit="return false">
+      <h1>Депозит</h1>
+      <label for="deposit-amount">Сумма</label>
+      <input id="deposit-amount" inputmode="decimal" autocomplete="off" value="${esc(state.depositAmount)}" ${invalid} />
+      <label for="deposit-comment">Комментарий</label>
+      <textarea id="deposit-comment" maxlength="200">${esc(state.depositComment)}</textarea>
+      ${errorLine(state.formError, "form-error")}
+      <button type="button" class="deposit" data-action="deposit-submit" ${depositDisabled ? "disabled" : ""}>${state.waiting ? "Сохранение…" : "ДЕПС"}</button>
+      <button type="button" class="neutral" data-action="deposit-cancel">Отменить</button>
+    </form>`;
+  }
+  return `<section class="${stackClass(enter, false)} actions" aria-label="Операция">
+    <button type="button" class="expense" data-action="expense">Расходы</button>
+    <button type="button" class="deposit" data-action="deposit">Депозит</button>
+  </section>`;
 }
 
-function reports(state: State): string {
+function reports(state: State, enter: boolean): string {
   const pie = state.reportEmpty ? `<p class="empty">Нет расходов за период</p>` : `${pieMarkup(state.slices)}<ul class="legend">${state.slices
-    .map((slice) => `<li>${esc(slice.category)} ${esc(slice.amount)} €</li>`)
+    .map((slice) => `<li>${esc(categoryLabel(slice.category))} ${esc(slice.amount)} €</li>`)
     .join("")}</ul>`;
-  return `<section class="stack">
+  return `<section class="${stackClass(enter, true)}">
     <button type="button" class="neutral" data-action="report-pie">Категории</button>
     <button type="button" class="stub" data-action="stub-months">По месяцам</button>
     <button type="button" class="stub" data-action="stub-authors">По авторам</button>
@@ -363,8 +373,19 @@ function reports(state: State): string {
   </section>`;
 }
 
-function errorLine(message: string | null): string {
-  return message ? `<p class="error" role="alert">${esc(message)}</p>` : "";
+function stackClass(enter: boolean, still: boolean): string {
+  if (!enter) return "stack";
+  return still ? "stack screen-enter screen-still" : "stack screen-enter";
+}
+
+function errorLine(message: string | null, id = ""): string {
+  if (!message) return "";
+  const attr = id ? ` id="${id}"` : "";
+  return `<p class="error" role="alert"${attr}>${esc(message)}</p>`;
+}
+
+function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category] ?? category;
 }
 
 function normalizeAmount(raw: string): string {

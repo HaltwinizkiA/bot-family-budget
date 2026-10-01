@@ -1,20 +1,86 @@
 * { box-sizing: border-box; }
 
+:root {
+  --bg-top: #e7f0ea;
+  --bg-bottom: #f6f1ea;
+  --surface: #fffcf8;
+  --ink: #1c2430;
+  --line: rgba(28, 36, 48, 0.14);
+  --expense: #c2410c;
+  --on-expense: #ffffff;
+  --deposit: #0f766e;
+  --on-deposit: #ffffff;
+  --danger: #9f1239;
+  --focus: #1d4ed8;
+  --stub-bg: #e7eee9;
+  --glow-deposit: rgba(15, 118, 110, 0.18);
+  --glow-expense: rgba(194, 65, 12, 0.14);
+  --shadow: 0 10px 28px rgba(28, 49, 40, 0.08);
+  --radius: 14px;
+  --ease: ease-out;
+  --move: 280ms;
+  --press: 200ms;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg-top: #141a18;
+  --bg-bottom: #1b1916;
+  --surface: #232b2e;
+  --ink: #f4f1ea;
+  --line: rgba(244, 241, 234, 0.16);
+  --danger: #ffb4ab;
+  --focus: #93c5fd;
+  --stub-bg: #2a3330;
+  --glow-deposit: rgba(45, 180, 166, 0.22);
+  --glow-expense: rgba(224, 122, 76, 0.16);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-top: #141a18;
+    --bg-bottom: #1b1916;
+    --surface: #232b2e;
+    --ink: #f4f1ea;
+    --line: rgba(244, 241, 234, 0.16);
+    --danger: #ffb4ab;
+    --focus: #93c5fd;
+    --stub-bg: #2a3330;
+    --glow-deposit: rgba(45, 180, 166, 0.22);
+    --glow-expense: rgba(224, 122, 76, 0.16);
+    --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+
 html, body {
   margin: 0;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
 body {
   font-family: system-ui, sans-serif;
-  color: #111;
-  background: #f4f6f8;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--tg-text, var(--ink));
+  background-color: var(--tg-bg, var(--bg-top));
+  background-image:
+    radial-gradient(120% 55% at 0% -8%, var(--glow-deposit), transparent 60%),
+    radial-gradient(90% 45% at 100% 0%, var(--glow-expense), transparent 55%),
+    linear-gradient(180deg, var(--tg-bg, var(--bg-top)), var(--tg-bg, var(--bg-bottom)));
 }
 
 .app {
   width: min(430px, 100%);
+  min-height: 100dvh;
   margin: 0 auto;
-  padding: 16px;
+  padding:
+    calc(16px + env(safe-area-inset-top))
+    16px
+    calc(24px + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px));
 }
 
 .top { margin-bottom: 16px; }
@@ -23,6 +89,15 @@ body {
   margin: 0 0 12px;
   font-size: 2rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  font-weight: 700;
 }
 
 .tabs, .presets, .stack {
@@ -30,58 +105,185 @@ body {
   gap: 8px;
 }
 
-.tabs button, .presets button, .stack button, .add {
+.stack { flex-direction: column; }
+
+.actions { gap: 12px; }
+
+button, input, textarea {
   font: inherit;
+  font-size: 1rem;
+}
+
+button {
   min-height: 48px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--press) var(--ease), filter var(--press) var(--ease), background-color var(--press) var(--ease), box-shadow var(--move) var(--ease);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--tg-focus, var(--focus));
+  outline-offset: 2px;
 }
 
 .tabs { margin-bottom: 8px; }
 
-.tabs button {
+.tabs button,
+.presets button {
   flex: 1 1 0;
   min-width: 0;
-  background: #fff;
+  width: auto;
+}
+
+.tabs button {
+  background: var(--tg-surface, var(--surface));
+  color: var(--tg-text, var(--ink));
+  border-color: var(--line);
+  box-shadow: var(--shadow);
 }
 
 .tabs button[aria-current="page"] {
-  border-bottom: 3px solid #111;
+  box-shadow: var(--shadow), inset 0 -3px 0 var(--tg-text, var(--ink));
   font-weight: 700;
 }
 
-.stack { flex-direction: column; }
-
-.stack button, .add, .stack input, .stack textarea {
+.stack button,
+.stack input,
+.stack textarea {
   width: 100%;
   max-width: 100%;
 }
 
-.add {
-  font-size: 1.25rem;
-  background: #111;
-  color: #fff;
+.presets button {
+  width: auto;
 }
 
-.blue { background: #2563eb; color: #fff; }
-.green { background: #16a34a; color: #fff; }
-.red { background: #dc2626; color: #fff; }
-.neutral, .presets button { background: #fff; color: #111; border-color: #d0d5dd; }
-.stub { background: #eceff3; color: #667085; }
+.expense {
+  background: var(--expense);
+  color: var(--on-expense);
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(194, 65, 12, 0.22);
+}
 
-button:disabled { opacity: 0.45; }
+.deposit {
+  background: var(--deposit);
+  color: var(--on-deposit);
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.22);
+}
 
-label { font-size: 0.9rem; }
+.neutral,
+.presets button {
+  background: var(--tg-surface, var(--surface));
+  color: var(--tg-text, var(--ink));
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+
+.presets button[aria-pressed="true"] {
+  font-weight: 700;
+  border-color: var(--tg-text, var(--ink));
+}
+
+.stub {
+  background: var(--stub-bg);
+  color: var(--tg-text, var(--ink));
+  border-color: var(--line);
+}
+
+label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--tg-text, var(--ink));
+}
 
 input, textarea {
-  font: inherit;
+  min-height: 48px;
   padding: 12px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--tg-surface, var(--surface));
+  color: var(--tg-text, var(--ink));
+  scroll-margin: 12px 0 24px;
 }
 
-.error { color: #b42318; margin: 0; }
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.error {
+  color: var(--tg-danger, var(--danger));
+  margin: 0;
+}
+
 .toast { margin: 0; }
+
 .empty { margin: 8px 0 0; }
-.legend { margin: 12px 0 0; padding-left: 18px; }
-svg { width: 100%; height: auto; }
+
+.legend {
+  margin: 12px 0 0;
+  padding-left: 18px;
+}
+
+svg { width: 100%; height: auto; display: block; }
+
+@media (hover: hover) {
+  button:hover:not(:disabled) {
+    filter: brightness(0.97);
+  }
+}
+
+/* Screens with text fields fade in place so a transform does not move the caret. */
+.screen-enter {
+  animation: screen-in var(--move) var(--ease);
+}
+
+.screen-still.screen-enter {
+  animation-name: fade-in;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter {
+    animation: none;
+  }
+
+  button,
+  .tabs button {
+    transition: none;
+  }
+
+  button:active:not(:disabled) {
+    transform: none;
+  }
+}
