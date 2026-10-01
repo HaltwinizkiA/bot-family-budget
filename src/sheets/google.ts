@@ -5,11 +5,20 @@ import type { JournalStore } from "./types.js";
 
 type SheetsClient = ReturnType<typeof google.sheets>;
 
-export async function createGoogleJournal(spreadsheetId: string, keyFile: string): Promise<JournalStore> {
-  const auth = new google.auth.GoogleAuth({
-    keyFile,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
+export function googleAuth(credentials: string) {
+  const trimmed = credentials.trim();
+  const scopes = ["https://www.googleapis.com/auth/spreadsheets"];
+  if (trimmed.startsWith("{")) {
+    return new google.auth.GoogleAuth({
+      credentials: JSON.parse(trimmed) as Record<string, unknown>,
+      scopes,
+    });
+  }
+  return new google.auth.GoogleAuth({ keyFile: trimmed, scopes });
+}
+
+export async function createGoogleJournal(spreadsheetId: string, credentials: string): Promise<JournalStore> {
+  const auth = googleAuth(credentials);
   const sheets = google.sheets({ version: "v4", auth });
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
