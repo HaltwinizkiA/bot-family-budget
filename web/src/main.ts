@@ -1,18 +1,17 @@
-import { mount } from "./app.ts";
-
-const root = document.querySelector("#app");
-if (!(root instanceof HTMLElement)) throw new Error("missing #app");
+import { enterApp } from "./gate.ts";
 
 const webApp = window.Telegram?.WebApp;
 webApp?.ready();
 webApp?.expand();
-applyTelegramTheme(webApp);
-bindKeyboardInset();
-webApp?.onEvent?.("themeChanged", () => applyTelegramTheme(window.Telegram?.WebApp));
 
-mount(root, {
+void enterApp({
   initData: webApp?.initData ?? "",
   fetch: window.fetch.bind(window),
+  prepare: () => {
+    applyTelegramTheme(webApp);
+    bindKeyboardInset();
+    webApp?.onEvent?.("themeChanged", () => applyTelegramTheme(window.Telegram?.WebApp));
+  },
 });
 
 function bindKeyboardInset(): void {

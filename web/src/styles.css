@@ -73,6 +73,12 @@ body {
     linear-gradient(180deg, var(--tg-bg, var(--bg-top)), var(--tg-bg, var(--bg-bottom)));
 }
 
+body:has(#not-found-title) {
+  background: #fff;
+  background-image: none;
+  color: #000;
+}
+
 .app {
   width: min(430px, 100%);
   min-height: 100dvh;

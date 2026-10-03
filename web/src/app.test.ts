@@ -3,6 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mount } from "./app.js";
+import { enterApp } from "./gate.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -260,6 +261,106 @@ describe("mini app", () => {
     expect(document.activeElement).toBe(note);
     expect(note.selectionStart).toBe(8);
     expect(note.value).toBe("зарплата");
+  });
+
+  it("renders a fake 404 for missing initData or a 401 and does not render the add button", async () => {
+    const fetchMock = vi.fn();
+    document.title = "Family Budget";
+    document.body.innerHTML = "<h1>Home</h1><button data-action='add'>Add</button><p class='balance'>300.00 €</p>";
+    await enterApp({ initData: "", fetch: fetchMock });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.title).toBe("404");
+    expect(document.querySelector("#not-found-title")?.textContent).toBe("404");
+    expect(document.querySelector("#not-found-text")?.textContent).toBe("Not found");
+    expect(document.querySelector("[data-action='add']")).toBeNull();
+    expect(document.querySelector("[data-action='expense']")).toBeNull();
+    expect(document.querySelector("[data-action='tab-home']")).toBeNull();
+    expect(document.querySelector("[data-action='tab-reports']")).toBeNull();
+    expect(document.body.textContent).not.toContain("Family Budget");
+    expect(document.body.textContent).not.toContain("Не авторизовано");
+    expect(document.body.textContent).not.toContain("300.00");
+
+    document.title = "Family Budget";
+    document.body.innerHTML = "<h1>Home</h1><button data-action='add'>Add</button>";
+    await enterApp({ initData: "   ", fetch: fetchMock });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.title).toBe("404");
+    expect(document.querySelector("#not-found-text")?.textContent).toBe("Not found");
+    expect(document.querySelector("[data-action='add']")).toBeNull();
+
+    let release: (response: Response) => void = () => {};
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const waiting = vi.fn(() => pending);
+    document.title = "Family Budget";
+    document.body.innerHTML = "<h1>Home</h1><button data-action='add'>Add</button><p class='balance'>300.00 €</p>";
+    const entered = enterApp({ initData: "signed", fetch: waiting });
+    expect(document.querySelector("[data-action='expense']")).toBeNull();
+    expect(document.querySelector("[data-action='tab-home']")).toBeNull();
+    expect(document.body.textContent).not.toContain("Расходы");
+    release(json({ error: "Не авторизовано" }, 401));
+    await entered;
+    expect(waiting).toHaveBeenCalledWith("/api/balance", {
+      headers: { authorization: "tma signed" },
+    });
+    expect(document.title).toBe("404");
+    expect(document.querySelector("#not-found-title")?.textContent).toBe("404");
+    expect(document.querySelector("#not-found-text")?.textContent).toBe("Not found");
+    expect(document.body.textContent).not.toContain("Не авторизовано");
+    expect(document.body.textContent).not.toContain("access denied");
+    expect(document.body.textContent).not.toContain("300.00");
+    expect(document.querySelector("[data-action='add']")).toBeNull();
+    expect(document.querySelector("[data-action='expense']")).toBeNull();
+    expect(document.querySelector("[data-action='tab-home']")).toBeNull();
+    expect(document.querySelector("#app")).toBeNull();
+  });
+
+  it("opens the current Home flow when balance is not a 401", async () => {
+    document.title = "404";
+    document.body.innerHTML = "<h1 id='not-found-title'>404</h1><p id='not-found-text'>Not found</p>";
+    const seen: string[] = [];
+    await enterApp({
+      initData: " signed ",
+      fetch: fakeFetch,
+      prepare: () => {
+        seen.push(document.querySelector("[data-action='expense']") ? "home" : "before-home");
+      },
+    });
+    await flush();
+    expect(seen).toEqual(["before-home"]);
+    expect(document.title).toBe("Family Budget");
+    expect(document.documentElement.lang).toBe("ru");
+    expect(document.body.textContent).toContain("300.00 €");
+    expect(document.querySelector("[data-action='tab-home']")?.textContent).toBe("Home");
+    expect(document.querySelector("[data-action='tab-reports']")?.textContent).toBe("Reports");
+    expect(document.querySelector("[data-action='expense']")?.textContent).toBe("Расходы");
+    expect(document.querySelector("[data-action='deposit']")?.textContent).toBe("Депозит");
+    expect(document.querySelector("#not-found-title")).toBeNull();
+    expect(document.querySelector("#not-found-text")).toBeNull();
+    expect(document.body.textContent).not.toContain("Not found");
+  });
+
+  it("opens Home when the balance call returns 500 or throws", async () => {
+    document.body.innerHTML = "<h1 id='not-found-title'>404</h1><p id='not-found-text'>Not found</p>";
+    await enterApp({
+      initData: "signed",
+      fetch: vi.fn(async () => json({ error: "Не удалось сохранить, попробуйте ещё раз" }, 500)),
+    });
+    expect(document.title).toBe("Family Budget");
+    expect(document.querySelector("[data-action='expense']")?.textContent).toBe("Расходы");
+    expect(document.querySelector("#not-found-title")).toBeNull();
+    expect(document.querySelector("[data-action='add']")).toBeNull();
+
+    document.title = "404";
+    document.body.innerHTML = "<h1 id='not-found-title'>404</h1><p id='not-found-text'>Not found</p>";
+    await enterApp({
+      initData: "signed",
+      fetch: vi.fn(() => Promise.reject(new Error("offline"))),
+    });
+    expect(document.title).toBe("Family Budget");
+    expect(document.querySelector("[data-action='tab-reports']")?.textContent).toBe("Reports");
+    expect(document.querySelector("#not-found-text")).toBeNull();
   });
 });
 
