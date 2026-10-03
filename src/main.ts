@@ -9,11 +9,11 @@ const port = Number(process.env.PORT ?? "3000");
 const webhookUrl = process.env.WEBHOOK_URL ?? "";
 const staticDir = fileURLToPath(new URL("../web/dist", import.meta.url));
 
-const { app, botToken } = await createRuntime({
+const { app, botToken, allowedUserIds } = await createRuntime({
   staticDir: fs.existsSync(path.join(staticDir, "index.html")) ? staticDir : undefined,
 });
 
-await startBot(botToken, app, webhookUrl);
+await startBot(botToken, app, webhookUrl, allowedUserIds);
 
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`Family Budget listening on ${info.port}`);

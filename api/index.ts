@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { Bot } from "grammy";
 import type { Hono } from "hono";
+import { startReply } from "../src/bot/startReply.js";
 import { createRuntime } from "../src/runtime.js";
 
 export const config = {
@@ -14,13 +15,15 @@ type Listener = (req: IncomingMessage, res: ServerResponse) => void;
 let listenerPromise: Promise<Listener> | undefined;
 
 async function boot(): Promise<Listener> {
-  const { app, botToken } = await createRuntime();
+  const { app, botToken, allowedUserIds } = await createRuntime();
   const bot = new Bot(botToken);
   const me = await bot.api.getMe();
   if (!me.username) throw new Error("Bot has no username");
   const startLink = `https://t.me/${me.username}?startapp`;
   bot.command("start", async (ctx) => {
-    await ctx.reply(`Семейный бюджет\n${startLink}`);
+    const text = startReply(ctx.from?.id, allowedUserIds, startLink);
+    if (text === undefined) return;
+    await ctx.reply(text);
   });
   app.post("/api/telegram/webhook", async (c) => {
     await bot.handleUpdate(await c.req.json());
