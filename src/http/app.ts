@@ -17,6 +17,7 @@ export function createApp(deps: {
   queue: WriteQueue;
   store: JournalStore;
   now: () => Date;
+  allowedUserIds: ReadonlySet<number>;
   staticDir?: string;
 }): Hono {
   const app = new Hono();
@@ -75,10 +76,15 @@ export function createApp(deps: {
   return app;
 }
 
-function requireUser(header: string | undefined, deps: { botToken: string; now: () => Date }) {
+function requireUser(
+  header: string | undefined,
+  deps: { botToken: string; now: () => Date; allowedUserIds: ReadonlySet<number> },
+) {
   const match = /^tma\s+(.+)$/i.exec(header ?? "");
   if (!match?.[1]) throw new AuthError();
-  return verifyInitData(match[1], deps.botToken, deps.now());
+  const user = verifyInitData(match[1], deps.botToken, deps.now());
+  if (!deps.allowedUserIds.has(user.id)) throw new AuthError();
+  return user;
 }
 
 function customRange(

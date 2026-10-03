@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { parseAllowedUserIds } from "./allowedUserIds.js";
 import { createApp } from "./http/app.js";
 import { createGoogleJournal } from "./sheets/google.js";
 import { WriteQueue } from "./sheets/queue.js";
@@ -18,8 +19,10 @@ export async function createRuntime(options: { staticDir?: string } = {}): Promi
   app: Hono;
   botToken: string;
   store: JournalStore;
+  allowedUserIds: ReadonlySet<number>;
 }> {
   const botToken = mustEnv("BOT_TOKEN");
+  const allowedUserIds = parseAllowedUserIds();
   const store = await createGoogleJournal(mustEnv("SHEET_ID"), sheetsCredentials());
   const app = createApp({
     botToken,
@@ -27,6 +30,7 @@ export async function createRuntime(options: { staticDir?: string } = {}): Promi
     store,
     now: () => new Date(),
     staticDir: options.staticDir,
+    allowedUserIds,
   });
-  return { app, botToken, store };
+  return { app, botToken, store, allowedUserIds };
 }

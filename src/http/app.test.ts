@@ -15,12 +15,13 @@ function initData(user: { id: number; username?: string }): string {
   });
 }
 
-function build(store = new MemorySheets(30000)) {
+function build(store = new MemorySheets(30000), allowedUserIds: ReadonlySet<number> = new Set<number>([7, 8])) {
   const app = createApp({
     botToken: TOKEN,
     queue: new WriteQueue(store, () => NOW),
     store,
     now: () => NOW,
+    allowedUserIds,
   });
   return { app, store };
 }
@@ -123,6 +124,63 @@ describe("http api", () => {
     });
     const bad = await app.request("/api/report?from=2026-08-31&to=2026-10-01", { headers });
     expect(bad.status).toBe(400);
+  });
+
+  it("lets a listed id read the balance", async () => {
+    const { app } = build(new MemorySheets(30000), new Set<number>([7]));
+    const response = await app.request("/api/balance", {
+      headers: { authorization: `tma ${initData({ id: 7 })}` },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ balance: "300.00" });
+  });
+
+  it("denies a signed id that is not listed and writes no journal row", async () => {
+    const { app, store } = build();
+    const payload = JSON.stringify({ type: "expense", amount: "1", category: "Rent" });
+    const missing = await app.request("/api/transactions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: payload,
+    });
+    const foreign = await app.request("/api/transactions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `tma ${initData({ id: 9, username: "anna" })}`,
+      },
+      body: payload,
+    });
+    const missingBody = await missing.json();
+    const foreignBody = await foreign.json();
+    expect(foreign.status).toBe(401);
+    expect(foreign.status).toBe(missing.status);
+    expect(foreignBody).toEqual({ error: "Не авторизовано" });
+    expect(foreignBody).toEqual(missingBody);
+    expect(store.rows.size).toBe(0);
+    expect(store.balanceCents).toBe(30000);
+
+    const headers = { authorization: `tma ${initData({ id: 9 })}` };
+    const balance = await app.request("/api/balance", { headers });
+    const report = await app.request("/api/report", { headers });
+    expect(balance.status).toBe(401);
+    expect(report.status).toBe(401);
+    expect(await balance.json()).toEqual(missingBody);
+    expect(await report.json()).toEqual(missingBody);
+  });
+
+  it("denies a valid id when the allow-list is empty", async () => {
+    const { app } = build(new MemorySheets(30000), new Set<number>());
+    const denied = await app.request("/api/balance", {
+      headers: { authorization: `tma ${initData({ id: 7 })}` },
+    });
+    const missing = await app.request("/api/balance");
+    const deniedBody = await denied.json();
+    const missingBody = await missing.json();
+    expect(denied.status).toBe(401);
+    expect(denied.status).toBe(missing.status);
+    expect(deniedBody).toEqual({ error: "Не авторизовано" });
+    expect(deniedBody).toEqual(missingBody);
   });
 });
 
