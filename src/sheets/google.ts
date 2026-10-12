@@ -104,4 +104,20 @@ class GoogleJournal implements JournalStore {
     }
     return rows;
   }
+
+  async rewriteJournal(rows: StoredRow[]): Promise<void> {
+    // Clear existing data rows then write the new set starting at row 5
+    await this.sheets.spreadsheets.values.clear({
+      spreadsheetId: this.spreadsheetId,
+      range: a1(this.title, "A5:G"),
+    });
+    if (rows.length === 0) return;
+    const values = rows.map((row) => rowToCells(row));
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: a1(this.title, `A5:G${4 + rows.length}`),
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+  }
 }

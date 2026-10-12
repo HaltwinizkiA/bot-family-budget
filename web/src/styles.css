@@ -293,3 +293,69 @@ svg { width: 100%; height: auto; display: block; }
     transform: none;
   }
 }
+
+.recent {
+  display: block;
+  text-align: left;
+  background: var(--tg-surface, var(--surface));
+  color: var(--tg-text, var(--ink));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow);
+  margin-top: 4px;
+}
+
+.recent-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.recent-list, .history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recent-item, .history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.recent-item:last-child, .history-item:last-child {
+  border-bottom: none;
+}
+
+.history-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.recent-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.recent-amount.neg { color: var(--expense, #e07a4c); }
+.recent-amount.pos { color: var(--deposit, #2db4a6); }
+
+.recent-cat { font-weight: 600; }
+.recent-comment { opacity: 0.8; font-size: 0.9rem; }
+.muted { opacity: 0.65; font-size: 0.85rem; }
+
+.danger {
+  background: transparent;
+  color: var(--danger, #ffb4ab);
+  border-color: var(--danger, #ffb4ab);
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}

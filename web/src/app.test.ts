@@ -42,7 +42,7 @@ describe("mini app", () => {
     expect(root.textContent).toContain("300.00 €");
     expect(actionText(root, "[data-action='expense'], [data-action='deposit']")).toEqual(["Расходы", "Депозит"]);
     expect(root.querySelector("[data-action='category-Groceries']")).toBeNull();
-    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/transactions"))).toBe(false);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/transactions") && call[1]?.method === "POST")).toBe(false);
   });
 
   it("shows Russian category labels and posts the English enum", async () => {
@@ -58,6 +58,7 @@ describe("mini app", () => {
       "Транспорт",
       "Развлечения",
       "Прочее",
+      "Путешествие",
     ]);
     expect(buttons.map((node) => node.getAttribute("data-action"))).toEqual([
       "category-Rent",
@@ -68,6 +69,7 @@ describe("mini app", () => {
       "category-Transport",
       "category-Entertainment",
       "category-Miscellaneous",
+      "category-travel",
     ]);
   });
 
@@ -86,7 +88,7 @@ describe("mini app", () => {
     let posts = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.includes("/api/transactions")) {
+      if (url.includes("/api/transactions") && init?.method === "POST") {
         posts += 1;
         return json({ balance: "290.00" });
       }

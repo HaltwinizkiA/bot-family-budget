@@ -3,7 +3,7 @@ import { parseAmount } from "@domain/money.ts";
 import { pieMarkup } from "./pie.ts";
 
 type Slice = { category: string; amount: string };
-type Step = "home" | "categories" | "amount" | "deposit";
+type Step = "home" | "categories" | "amount" | "deposit" | "history";
 type Tab = "home" | "reports";
 type Preset = "month" | "quarter" | "year";
 
@@ -16,7 +16,17 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   Transport: "Транспорт",
   Entertainment: "Развлечения",
   Miscellaneous: "Прочее",
+  travel: "Путешествие",
   income: "Доход",
+};
+
+type Transaction = {
+  id: number;
+  date: string;
+  amount: string;
+  category: string;
+  comment: string;
+  createdBy: string;
 };
 
 type State = {
@@ -38,6 +48,10 @@ type State = {
   slices: Slice[];
   reportEmpty: boolean;
   reportError: string | null;
+  recent: Transaction[];
+  history: Transaction[];
+  historyLoading: boolean;
+  confirmDeleteId: number | null;
 };
 
 export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof fetch }): void {
@@ -60,6 +74,10 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
     slices: [],
     reportEmpty: true,
     reportError: null,
+    recent: [],
+    history: [],
+    historyLoading: false,
+    confirmDeleteId: null,
   };
 
   root.addEventListener("click", (event) => {
@@ -102,6 +120,7 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
   render();
   void loadBalance();
   void loadReport();
+  void loadRecent();
 
   function onAction(action: string): void {
     if (action === "tab-home") {
@@ -124,6 +143,39 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
     }
     if (action === "deposit") {
       state.step = "deposit";
+      state.formError = null;
+      render();
+      return;
+    }
+    if (action === "history") {
+      state.step = "history";
+      state.formError = null;
+      void loadHistory();
+      return;
+    }
+    if (action === "history-back") {
+      state.step = "home";
+      state.formError = null;
+      state.confirmDeleteId = null;
+      void loadRecent();
+      render();
+      return;
+    }
+    if (action.startsWith("delete-")) {
+      const id = Number(action.slice("delete-".length));
+      if (Number.isInteger(id)) {
+        state.confirmDeleteId = id;
+        state.formError = null;
+        render();
+      }
+      return;
+    }
+    if (action === "delete-confirm") {
+      if (state.confirmDeleteId !== null) void removeTransaction(state.confirmDeleteId);
+      return;
+    }
+    if (action === "delete-cancel") {
+      state.confirmDeleteId = null;
       state.formError = null;
       render();
       return;
@@ -272,6 +324,66 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
     return { authorization: `tma ${deps.initData}` };
   }
 
+  async function loadRecent(): Promise<void> {
+    try {
+      const response = await deps.fetch("/api/transactions?limit=5", { headers: authHeader() });
+      if (!response.ok) return;
+      const payload = (await response.json()) as { transactions?: Transaction[] };
+      state.recent = payload.transactions ?? [];
+      render();
+    } catch {
+      /* preview is optional */
+    }
+  }
+
+  async function loadHistory(): Promise<void> {
+    state.historyLoading = true;
+    render();
+    try {
+      const response = await deps.fetch("/api/transactions", { headers: authHeader() });
+      if (!response.ok) {
+        state.history = [];
+        state.historyLoading = false;
+        render();
+        return;
+      }
+      const payload = (await response.json()) as { transactions?: Transaction[] };
+      state.history = payload.transactions ?? [];
+    } catch {
+      state.history = [];
+    }
+    state.historyLoading = false;
+    render();
+  }
+
+  async function removeTransaction(id: number): Promise<void> {
+    if (state.saving) return;
+    state.saving = true;
+    state.formError = null;
+    render();
+    try {
+      const response = await deps.fetch(`/api/transactions/${id}`, {
+        method: "DELETE",
+        headers: authHeader(),
+      });
+      const payload = (await response.json()) as { balance?: string; error?: string };
+      if (!response.ok) {
+        state.formError = payload.error ?? "Не удалось удалить";
+        state.saving = false;
+        render();
+        return;
+      }
+      if (payload.balance) state.balance = payload.balance;
+      state.confirmDeleteId = null;
+      await loadHistory();
+      void loadRecent();
+    } catch {
+      state.formError = "Не удалось удалить";
+    }
+    state.saving = false;
+    render();
+  }
+
   function render(): void {
     const key = `${state.tab}:${state.step}`;
     const enter = key !== presented;
@@ -329,6 +441,45 @@ function home(state: State, enter: boolean): string {
       <button type="button" class="neutral" data-action="expense-cancel">Отменить</button>
     </form>`;
   }
+  if (state.step === "history") {
+    if (state.confirmDeleteId !== null) {
+      const tx = state.history.find((item) => item.id === state.confirmDeleteId);
+      const summary = tx
+        ? `${esc(tx.amount)} € · ${esc(categoryLabel(tx.category))}${tx.comment ? ` · ${esc(tx.comment)}` : ""}`
+        : `запись #${state.confirmDeleteId}`;
+      return `<section class="${stackClass(enter, true)}">
+        <h1>Удалить запись?</h1>
+        <p>${summary}</p>
+        ${errorLine(state.formError)}
+        <button type="button" class="danger" data-action="delete-confirm" ${state.saving ? "disabled" : ""}>${state.saving ? "Удаление…" : "Удалить"}</button>
+        <button type="button" class="neutral" data-action="delete-cancel" ${state.saving ? "disabled" : ""}>Отменить</button>
+      </section>`;
+    }
+    const items = state.historyLoading
+      ? `<p class="empty">Загрузка…</p>`
+      : state.history.length === 0
+        ? `<p class="empty">Нет записей</p>`
+        : `<ul class="history">${state.history
+            .map(
+              (tx) =>
+                `<li class="history-item">
+                  <div class="history-main">
+                    <span class="recent-amount ${tx.amount.startsWith("-") ? "neg" : "pos"}">${esc(tx.amount)} €</span>
+                    <span class="recent-cat">${esc(categoryLabel(tx.category))}</span>
+                    ${tx.comment ? `<span class="recent-comment">${esc(tx.comment)}</span>` : ""}
+                    <span class="muted">${esc(tx.date.slice(0, 10))} · ${esc(tx.createdBy)}</span>
+                  </div>
+                  <button type="button" class="danger" data-action="delete-${tx.id}" ${state.saving ? "disabled" : ""}>Удалить</button>
+                </li>`,
+            )
+            .join("")}</ul>`;
+    return `<section class="${stackClass(enter, true)}">
+      <h1>История</h1>
+      ${errorLine(state.formError)}
+      ${items}
+      <button type="button" class="neutral" data-action="history-back">Назад</button>
+    </section>`;
+  }
   if (state.step === "deposit") {
     const depositDisabled = state.saving || !amountOk(normalizeAmount(state.depositAmount));
     const invalid = state.formError ? `aria-invalid="true" aria-describedby="form-error"` : "";
@@ -343,9 +494,22 @@ function home(state: State, enter: boolean): string {
       <button type="button" class="neutral" data-action="deposit-cancel">Отменить</button>
     </form>`;
   }
+  const recentItems = state.recent
+    .map(
+      (tx) =>
+        `<li class="recent-item"><span class="recent-amount ${tx.amount.startsWith("-") ? "neg" : "pos"}">${esc(tx.amount)} €</span> <span class="recent-cat">${esc(categoryLabel(tx.category))}</span>${tx.comment ? ` <span class="recent-comment">${esc(tx.comment)}</span>` : ""}</li>`,
+    )
+    .join("");
+  const recentBlock = state.recent.length
+    ? `<button type="button" class="recent" data-action="history" aria-label="Последние операции, открыть историю">
+        <span class="recent-title">Последние операции</span>
+        <ul class="recent-list">${recentItems}</ul>
+      </button>`
+    : `<button type="button" class="recent empty" data-action="history">Последние операции<br><span class="muted">Нет записей</span></button>`;
   return `<section class="${stackClass(enter, false)} actions" aria-label="Операция">
     <button type="button" class="expense" data-action="expense">Расходы</button>
     <button type="button" class="deposit" data-action="deposit">Депозит</button>
+    ${recentBlock}
   </section>`;
 }
 

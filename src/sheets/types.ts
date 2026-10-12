@@ -7,4 +7,5 @@ export type JournalStore = {
   writeBalance(cents: number): Promise<void>;
   deleteRow(rowNumber: number): Promise<void>;
   readJournal(): Promise<StoredRow[]>;
+  rewriteJournal(rows: StoredRow[]): Promise<void>;
 };

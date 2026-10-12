@@ -78,4 +78,35 @@ export class WriteQueue {
     }
     throw new SaveFailedError();
   }
+
+  delete(id: number): Promise<{ balance: string }> {
+    const run = this.tail.then(() => this.applyDelete(id));
+    this.tail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private async applyDelete(id: number): Promise<{ balance: string }> {
+    const rows = await this.store.readJournal();
+    const target = rows.find((row) => row.id === id);
+    if (!target) throw new InputError("Запись не найдена");
+    const remaining = rows.filter((row) => row.id !== id).sort((a, b) => a.id - b.id);
+    const current = await this.store.readBalance();
+    const totalSum = rows.reduce((sum, row) => sum + row.sumCents, 0);
+    let running = current - totalSum;
+    for (const row of remaining) {
+      running += row.sumCents;
+      row.balanceCents = running;
+    }
+    try {
+      await this.store.rewriteJournal(remaining);
+      await this.store.writeBalance(running);
+    } catch {
+      throw new SaveFailedError();
+    }
+    return { balance: formatEuros(running) };
+  }
+
 }

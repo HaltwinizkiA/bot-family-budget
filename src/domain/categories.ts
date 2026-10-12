@@ -9,6 +9,7 @@ export const EXPENSE_CATEGORIES = [
   "Transport",
   "Entertainment",
   "Miscellaneous",
+  "travel",
 ] as const satisfies readonly ExpenseCategory[];
 
 export function isExpenseCategory(value: string): value is ExpenseCategory {

@@ -70,6 +70,34 @@ export function createApp(deps: {
   });
 
   if (deps.staticDir) {
+
+  app.get("/api/transactions", async (c) => {
+    requireUser(c.req.header("authorization"), deps);
+    const limitRaw = c.req.query("limit");
+    const limit = limitRaw ? Number(limitRaw) : 0;
+    const rows = await deps.store.readJournal();
+    const sorted = [...rows].sort((a, b) => b.id - a.id);
+    const selected = limit > 0 ? sorted.slice(0, limit) : sorted;
+    return c.json({
+      transactions: selected.map((row) => ({
+        id: row.id,
+        date: row.dateIso,
+        amount: formatEuros(row.sumCents),
+        category: row.category,
+        comment: row.comment,
+        createdBy: row.createdBy,
+      })),
+    });
+  });
+
+  app.delete("/api/transactions/:id", async (c) => {
+    requireUser(c.req.header("authorization"), deps);
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) throw new InputError("Запись не найдена");
+    const result = await deps.queue.delete(id);
+    return c.json(result);
+  });
+
     app.use("*", serveStatic({ root: deps.staticDir }));
   }
 

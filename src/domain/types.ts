@@ -14,7 +14,8 @@ export type ExpenseCategory =
   | "Restaurants & Cafés"
   | "Transport"
   | "Entertainment"
-  | "Miscellaneous";
+  | "Miscellaneous"
+  | "travel";
 
 export type Category = ExpenseCategory | "income";
 

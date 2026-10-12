@@ -63,6 +63,13 @@ export class MemorySheets implements JournalStore {
       .sort((left, right) => left[0] - right[0])
       .map((entry) => entry[1]);
   }
+
+  async rewriteJournal(rows: StoredRow[]): Promise<void> {
+    this.rows.clear();
+    rows.forEach((row, index) => {
+      this.rows.set(5 + index, row);
+    });
+  }
 }
 
 function delay(ms: number): Promise<void> {
