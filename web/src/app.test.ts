@@ -58,6 +58,7 @@ describe("mini app", () => {
       "Транспорт",
       "Развлечения",
       "Прочее",
+      "Путешествие",
     ]);
     expect(buttons.map((node) => node.getAttribute("data-action"))).toEqual([
       "category-Rent",
@@ -68,6 +69,7 @@ describe("mini app", () => {
       "category-Transport",
       "category-Entertainment",
       "category-Miscellaneous",
+      "category-travel",
     ]);
   });
 

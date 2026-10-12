@@ -16,6 +16,7 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   Transport: "Транспорт",
   Entertainment: "Развлечения",
   Miscellaneous: "Прочее",
+  travel: "Путешествие",
   income: "Доход",
 };
 

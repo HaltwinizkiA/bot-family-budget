@@ -4,7 +4,7 @@ import { InputError } from "./errors.js";
 import { EXPENSE_CATEGORIES } from "./categories.js";
 
 describe("parseTransaction", () => {
-  it("stores an expense as a positive cent amount plus one of the eight categories", () => {
+  it("stores an expense as a positive cent amount plus one of the nine categories", () => {
     expect(
       parseTransaction({ type: "expense", amount: "25.5", category: "Groceries", comment: " молоко " }),
     ).toEqual({
@@ -19,7 +19,7 @@ describe("parseTransaction", () => {
     expect(() => parseTransaction({ type: "expense", amount: "10", category: "income" })).toThrow(InputError);
   });
 
-  it("lists exactly the eight sheet literals and not income", () => {
+  it("lists exactly the nine sheet literals and not income", () => {
     expect([...EXPENSE_CATEGORIES]).toEqual([
       "Rent",
       "Groceries",
@@ -29,6 +29,7 @@ describe("parseTransaction", () => {
       "Transport",
       "Entertainment",
       "Miscellaneous",
+      "travel",
     ]);
   });
 
