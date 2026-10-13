@@ -69,8 +69,6 @@ export function createApp(deps: {
     });
   });
 
-  if (deps.staticDir) {
-
   app.get("/api/transactions", async (c) => {
     requireUser(c.req.header("authorization"), deps);
     const limitRaw = c.req.query("limit");
@@ -98,6 +96,7 @@ export function createApp(deps: {
     return c.json(result);
   });
 
+  if (deps.staticDir) {
     app.use("*", serveStatic({ root: deps.staticDir }));
   }
 
