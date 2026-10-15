@@ -356,11 +356,32 @@ svg { width: 100%; height: auto; display: block; }
 
 .history-item .danger {
   flex-shrink: 0;
+  width: auto !important;
+  max-width: none;
   min-height: 32px;
   padding: 4px 10px;
   font-size: 0.85rem;
   white-space: nowrap;
   border-radius: 8px;
+  align-self: center;
+}
+
+.danger {
+  background: transparent;
+  color: var(--danger, #ffb4ab);
+  border-color: var(--danger, #ffb4ab);
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+.confirm-delete,
+.confirm-cancel {
+  width: 100%;
+  min-height: 48px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .recent-amount {
@@ -375,11 +396,11 @@ svg { width: 100%; height: auto; display: block; }
 .recent-comment { opacity: 0.8; font-size: 0.9rem; }
 .muted { opacity: 0.65; font-size: 0.85rem; }
 
-.danger {
-  background: transparent;
-  color: var(--danger, #ffb4ab);
-  border-color: var(--danger, #ffb4ab);
-  min-height: 40px;
-  padding: 8px 12px;
-  font-size: 0.9rem;
+.confirm-delete,
+.confirm-cancel {
+  width: 100%;
+  min-height: 48px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }

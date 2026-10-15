@@ -454,8 +454,8 @@ function home(state: State, enter: boolean): string {
         <h1>Удалить запись?</h1>
         <p>${summary}</p>
         ${errorLine(state.formError)}
-        <button type="button" class="danger" data-action="delete-confirm" ${state.saving ? "disabled" : ""}>${state.saving ? "Удаление…" : "Удалить"}</button>
-        <button type="button" class="neutral" data-action="delete-cancel" ${state.saving ? "disabled" : ""}>Отменить</button>
+        <button type="button" class="danger confirm-delete" data-action="delete-confirm" ${state.saving ? "disabled" : ""}>${state.saving ? "Удаление…" : "Удалить"}</button>
+        <button type="button" class="neutral confirm-cancel" data-action="delete-cancel" ${state.saving ? "disabled" : ""}>Отменить</button>
       </section>`;
     }
     const items = state.historyLoading
