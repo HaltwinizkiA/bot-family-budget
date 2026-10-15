@@ -125,6 +125,9 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
   function onAction(action: string): void {
     if (action === "tab-home") {
       state.tab = "home";
+      state.step = "home";
+      state.confirmDeleteId = null;
+      state.formError = null;
       state.toast = null;
       render();
       return;
