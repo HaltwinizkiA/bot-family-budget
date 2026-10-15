@@ -164,15 +164,6 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       render();
       return;
     }
-    if (action.startsWith("delete-")) {
-      const id = Number(action.slice("delete-".length));
-      if (Number.isInteger(id)) {
-        state.confirmDeleteId = id;
-        state.formError = null;
-        render();
-      }
-      return;
-    }
     if (action === "delete-confirm") {
       if (state.confirmDeleteId !== null) void removeTransaction(state.confirmDeleteId);
       return;
@@ -181,6 +172,15 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       state.confirmDeleteId = null;
       state.formError = null;
       render();
+      return;
+    }
+    if (action.startsWith("delete-")) {
+      const id = Number(action.slice("delete-".length));
+      if (Number.isInteger(id)) {
+        state.confirmDeleteId = id;
+        state.formError = null;
+        render();
+      }
       return;
     }
     if (action === "categories-back" || action === "deposit-cancel" || action === "expense-cancel") {
