@@ -50,7 +50,7 @@ describe("mini app", () => {
     click(root, "expense");
     const buttons = [...root.querySelectorAll("[data-action^='category-']")];
     expect(buttons.map((node) => node.textContent)).toEqual([
-      "Аренда",
+      "Обязательные платежи",
       "Продукты",
       "Быт",
       "Подарки",
@@ -108,7 +108,7 @@ describe("mini app", () => {
   it("normalizes a single comma before posting", async () => {
     let body = "";
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).includes("/api/transactions")) {
+      if (String(input).includes("/api/transactions") && init?.method === "POST") {
         body = String(init?.body ?? "");
         return json({ balance: "274.50" });
       }
@@ -150,7 +150,8 @@ describe("mini app", () => {
     click(root, "tab-reports");
     expect((root.querySelector("#report-from") as HTMLInputElement).value).toBe("2026-09-01");
     click(root, "tab-home");
-    expect(root.querySelector("[data-action='category-Rent']")).not.toBeNull();
+    expect(root.querySelector("[data-action='category-Rent']")).toBeNull();
+    expect(root.querySelector("[data-action='expense']")).not.toBeNull();
   });
 
   it("toasts the stub reports and does not ask for another pie", async () => {
@@ -186,7 +187,7 @@ describe("mini app", () => {
     setInput(root, "report-to", "2026-10-01");
     await flush();
     expect(root.textContent).toContain("Неверный период");
-    expect(root.textContent).toContain("Аренда");
+    expect(root.textContent).toContain("Обязательные платежи");
     expect(root.textContent).toContain("10.00 €");
   });
 

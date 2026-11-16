@@ -8,7 +8,7 @@ type Tab = "home" | "reports";
 type Preset = "month" | "quarter" | "year";
 
 const CATEGORY_LABELS: Readonly<Record<string, string>> = {
-  Rent: "Аренда",
+  Rent: "Обязательные платежи",
   Groceries: "Продукты",
   Household: "Быт",
   Gifts: "Подарки",
@@ -275,6 +275,7 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       state.depositAmount = "";
       state.depositComment = "";
       state.formError = null;
+      void loadRecent();
     } catch {
       state.formError = "Не удалось сохранить, попробуйте ещё раз";
     } finally {
@@ -500,7 +501,7 @@ function home(state: State, enter: boolean): string {
   const recentItems = state.recent
     .map(
       (tx) =>
-        `<li class="recent-item"><span class="recent-amount ${tx.amount.startsWith("-") ? "neg" : "pos"}">${esc(tx.amount)} €</span> <span class="recent-cat">${esc(categoryLabel(tx.category))}</span>${tx.comment ? ` <span class="recent-comment">${esc(tx.comment)}</span>` : ""}</li>`,
+        `<li class="recent-item"><span class="recent-amount ${tx.amount.startsWith("-") ? "neg" : "pos"}">${esc(tx.amount)} €</span> <span class="recent-cat">${esc(categoryLabel(tx.category))}</span> <span class="muted">${esc(tx.date.slice(0, 10))}</span>${tx.comment ? ` <span class="recent-comment">${esc(tx.comment)}</span>` : ""}</li>`,
     )
     .join("");
   const recentBlock = state.recent.length
@@ -517,9 +518,12 @@ function home(state: State, enter: boolean): string {
 }
 
 function reports(state: State, enter: boolean): string {
+  const totalCents = state.slices.reduce((sum, slice) => sum + Math.round(Number(slice.amount) * 100), 0);
+  const total = (totalCents / 100).toFixed(2);
+  const totalLine = state.reportEmpty ? "" : `<p class="total">В общем потрачено за период: ${esc(total)} €</p>`;
   const pie = state.reportEmpty ? `<p class="empty">Нет расходов за период</p>` : `${pieMarkup(state.slices)}<ul class="legend">${state.slices
     .map((slice) => `<li>${esc(categoryLabel(slice.category))} ${esc(slice.amount)} €</li>`)
-    .join("")}</ul>`;
+    .join("")}</ul>${totalLine}`;
   return `<section class="${stackClass(enter, true)}">
     <button type="button" class="neutral" data-action="report-pie">Категории</button>
     <button type="button" class="stub" data-action="stub-months">По месяцам</button>
