@@ -15,7 +15,8 @@ export type ExpenseCategory =
   | "Transport"
   | "Entertainment"
   | "Miscellaneous"
-  | "travel";
+  | "travel"
+  | "invest";
 
 export type Category = ExpenseCategory | "income";
 

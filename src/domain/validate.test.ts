@@ -19,7 +19,7 @@ describe("parseTransaction", () => {
     expect(() => parseTransaction({ type: "expense", amount: "10", category: "income" })).toThrow(InputError);
   });
 
-  it("lists exactly the nine sheet literals and not income", () => {
+  it("lists exactly the expense sheet literals and not income", () => {
     expect([...EXPENSE_CATEGORIES]).toEqual([
       "Rent",
       "Groceries",
@@ -30,6 +30,7 @@ describe("parseTransaction", () => {
       "Entertainment",
       "Miscellaneous",
       "travel",
+      "invest",
     ]);
   });
 
