@@ -309,7 +309,7 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       const payload = (await response.json()) as { slices?: Slice[]; empty?: boolean; error?: string };
       if (token !== reportToken) return;
       if (!response.ok) {
-        state.reportError = payload.error ?? "Неверный период";
+        state.reportError = payload.error ?? "Некорректные даты";
         render();
         return;
       }
@@ -319,7 +319,7 @@ export function mount(root: HTMLElement, deps: { initData: string; fetch: typeof
       render();
     } catch {
       if (token !== reportToken) return;
-      state.reportError = "Неверный период";
+      state.reportError = "Некорректные даты";
       render();
     }
   }

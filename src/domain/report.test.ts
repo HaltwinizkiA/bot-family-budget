@@ -56,27 +56,27 @@ describe("custom range", () => {
   const today: Ymd = { year: 2026, month: 10, day: 1 };
   const earliest: Ymd = { year: 2026, month: 9, day: 1 };
 
-  it("rejects a from-date before the earliest journal date", () => {
+  it("rejects when from is after to", () => {
+    expect(
+      customRangeError({ year: 2026, month: 10, day: 5 }, { year: 2026, month: 10, day: 1 }, today, earliest),
+    ).toBe("Дата начала позже даты окончания");
+  });
+
+  it("accepts a from-date before the earliest journal date", () => {
     expect(
       customRangeError({ year: 2026, month: 8, day: 31 }, { year: 2026, month: 9, day: 30 }, today, earliest),
-    ).toBeTruthy();
-  });
-
-  it("rejects a to-date after today in Berlin", () => {
-    expect(
-      customRangeError({ year: 2026, month: 9, day: 1 }, { year: 2026, month: 10, day: 2 }, today, earliest),
-    ).toBeTruthy();
-  });
-
-  it("accepts an inclusive range inside the bounds", () => {
-    expect(
-      customRangeError({ year: 2026, month: 9, day: 1 }, { year: 2026, month: 10, day: 1 }, today, earliest),
     ).toBeNull();
   });
 
-  it("has no lower bound when the journal is empty", () => {
+  it("accepts a to-date after today", () => {
     expect(
-      customRangeError({ year: 2026, month: 1, day: 1 }, { year: 2026, month: 10, day: 1 }, today, null),
+      customRangeError({ year: 2026, month: 9, day: 1 }, { year: 2026, month: 10, day: 2 }, today, earliest),
+    ).toBeNull();
+  });
+
+  it("accepts an inclusive range", () => {
+    expect(
+      customRangeError({ year: 2026, month: 9, day: 1 }, { year: 2026, month: 10, day: 1 }, today, earliest),
     ).toBeNull();
   });
 });

@@ -34,9 +34,7 @@ export function earliestYmd(rows: StoredRow[]): Ymd | null {
 }
 
 export function customRangeError(from: Ymd, to: Ymd, today: Ymd, earliest: Ymd | null): string | null {
-  if (compareYmd(from, to) > 0) return "Неверный период";
-  if (compareYmd(to, today) > 0) return "Неверный период";
-  if (earliest && compareYmd(from, earliest) < 0) return "Неверный период";
+  if (compareYmd(from, to) > 0) return "Дата начала позже даты окончания";
   return null;
 }
 

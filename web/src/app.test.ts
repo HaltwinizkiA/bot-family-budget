@@ -175,7 +175,7 @@ describe("mini app", () => {
   it("keeps the current pie when a custom range is rejected", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.includes("/api/report") && url.includes("from=")) return json({ error: "Неверный период" }, 400);
+      if (url.includes("/api/report") && url.includes("from=")) return json({ error: "Некорректные даты" }, 400);
       if (url.includes("/api/report")) {
         return json({ empty: false, earliest: "2026-09-01", slices: [{ category: "Rent", amount: "10.00" }] });
       }
@@ -186,7 +186,7 @@ describe("mini app", () => {
     setInput(root, "report-from", "2026-08-01");
     setInput(root, "report-to", "2026-10-01");
     await flush();
-    expect(root.textContent).toContain("Неверный период");
+    expect(root.textContent).toContain("Некорректные даты");
     expect(root.textContent).toContain("Обязательные платежи");
     expect(root.textContent).toContain("10.00 €");
   });

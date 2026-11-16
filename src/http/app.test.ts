@@ -110,7 +110,7 @@ describe("http api", () => {
     expect(await response.json()).toEqual({ balance: "300.00" });
   });
 
-  it("returns the calendar-month pie and rejects a from-date before the journal", async () => {
+  it("returns the calendar-month pie and allows a from-date before the journal", async () => {
     const store = new MemorySheets(10000);
     store.seed(5, sample("2026-09-15T12:00:00+02:00", -12000, "Rent"));
     store.seed(6, sample("2026-10-02T12:00:00+02:00", -2500, "Groceries"));
@@ -122,8 +122,10 @@ describe("http api", () => {
       empty: false,
       slices: [{ category: "Groceries", amount: "25.00" }],
     });
-    const bad = await app.request("/api/report?from=2026-08-31&to=2026-10-01", { headers });
-    expect(bad.status).toBe(400);
+    const early = await app.request("/api/report?from=2026-08-31&to=2026-10-01", { headers });
+    expect(early.status).toBe(200);
+    const body = await early.json();
+    expect(body.slices).toEqual([{ category: "Rent", amount: "120.00" }]);
   });
 
   it("lets a listed id read the balance", async () => {
